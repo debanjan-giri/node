@@ -23,11 +23,9 @@ This project is a Node.js-based CRUD API that includes user authentication using
 
 | Endpoint            | Method | Description                       | Auth Required |
 |---------------------|--------|-----------------------------------|---------------|
-| `/auth/register`    | POST   | Register a new user               | No            |
+| `/auth/register`    | POST   | Register new user and return token| No            |
 | `/auth/login`       | POST   | Log in a user and return tokens   | No            |
-| `/auth/refresh-token` | POST | Refresh access token              | Yes           |
-
-
+| `/auth/refresh-token` | POST | Refresh access token              | No            |
 | `/crud/create`      | POST   | Create new data entry             | Yes           |
 | `/crud/read/all`    | GET    | Read all data                     | Yes           |
 | `/crud/read/?page=1&limit=2` | GET  | pagination of data         | Yes           |

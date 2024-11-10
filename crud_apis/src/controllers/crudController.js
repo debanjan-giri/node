@@ -1,24 +1,8 @@
 import crudModel from "../models/crudModel.js";
-import Joi from "joi";
 import { errResponse, okResponse, validateId } from "../utils/common.js";
 import authModel from "../models/authModel.js";
 
-// Validation schema
-const detailsValidation = Joi.object({
-  name: Joi.string().required().messages({
-    "string.empty": "Name is required",
-    "any.required": "Name is required",
-  }),
-  email: Joi.string().email().required().messages({
-    "string.email": "Email must be a valid email address",
-    "string.empty": "Email is required",
-    "any.required": "Email is required",
-  }),
-  address: Joi.string().required().messages({
-    "string.empty": "Address is required",
-    "any.required": "Address is required",
-  }),
-});
+import { detailsValidation } from "../validation/inputValidation.js";
 
 export const createController = async (req, res, next) => {
   try {

@@ -1,27 +1,15 @@
-import Joi from "joi";
 import authModel from "../models/authModel.js";
 import bcrypt from "bcrypt";
-import { errResponse, generateToken, okResponse } from "../utils/common.js";
+import jwt from "jsonwebtoken";
+import { authValidation } from "../validation/inputValidation.js";
+
+import {
+  errResponse,
+  generateAccessToken,
+  okResponse,
+  generateRefreshToken,
+} from "../utils/common.js";
 import { createHash } from "../utils/common.js";
-const authValidation = Joi.object({
-  mobile: Joi.string()
-    .length(10)
-    .pattern(/^[0-9]+$/)
-    .required()
-    .messages({
-      "string.base": "Mobile must be a string",
-      "string.empty": "Mobile cannot be empty",
-      "string.length": "Mobile should be 10 digits long",
-      "string.pattern.base": "Mobile must contain only numbers",
-      "any.required": "Mobile is required",
-    }),
-  password: Joi.string().min(6).required().messages({
-    "string.base": "Password must be a string",
-    "string.empty": "Password cannot be empty",
-    "string.min": "Password must be at least 8 characters long",
-    "any.required": "Password is required",
-  }),
-});
 
 export const registerController = async (req, res, next) => {
   try {
@@ -49,16 +37,24 @@ export const registerController = async (req, res, next) => {
     if (!newUser) return errResponse(next, "User registration failed", 500);
 
     // Generate JWT token
-    const token = generateToken(newUser);
+    const accesstoken = generateAccessToken(next, newUser);
+
+    // send refresh token in cookie
+    const refreshtoken = generateRefreshToken(res, next, newUser);
+
+    if (!accesstoken && !refreshtoken) {
+      await authModel.deleteOne({ _id: newUser._id });
+      return errResponse(next, "User registration failed", 500);
+    }
 
     // Success response
     return okResponse(res, "User registered successfully", {
       id: newUser._id,
       mobile: newUser.mobile,
-      token,
+      token: accesstoken,
     });
   } catch (error) {
-    console.error("Error in registerController"); 
+    console.error(`Error in registerController : ${error.message}`);
     next(error); // Pass errors to global error handler
   }
 };
@@ -86,16 +82,79 @@ export const loginController = async (req, res, next) => {
       return errResponse(next, "Invalid mobile number or password", 401);
 
     // Generate JWT token
-    const token = generateToken(user);
+    const accesstoken = generateAccessToken(next, newUser);
+
+    // send refresh token in cookie
+    const refreshtoken = generateRefreshToken(res, next, newUser);
+
+    if (!accesstoken && !refreshtoken) {
+      await authModel.deleteOne({ _id: newUser._id });
+      return errResponse(next, "User login failed", 500);
+    }
 
     // Return success response
     return okResponse(res, "Login successful", {
       id: user._id,
       mobile: user.mobile,
-      token,
+      token: accesstoken,
     });
   } catch (error) {
-    console.error("Error in loginController");
+    console.error(`Error in loginController : ${error.message}`);
     next(error);
+  }
+};
+
+export const refreshTokenController = async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      return errResponse(next, "Refresh token not found", 401);
+    }
+
+    if (!process.env.REFRESH_TOKEN_SECRET) {
+      return next(new Error("REFRESH_TOKEN_SECRET is not defined"));
+    }
+
+    // Verify the refresh token
+    jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+      async (err, decoded) => {
+        if (err) {
+          const message =
+            err.name === "TokenExpiredError"
+              ? "Refresh token has expired"
+              : "Invalid refresh token";
+          return errResponse(next, message, 403); // Forbidden
+        }
+
+        if (!decoded.id) {
+          return errResponse(next, "Invalid refresh token", 401);
+        }
+
+        // Find the user in the database
+        const user = await authModel.findById(decoded.id).select("_id");
+        if (!user) {
+          return errResponse(next, "User not found in database", 404);
+        }
+
+        // Generate JWT token
+        const accesstoken = generateAccessToken(next, newUser);
+
+        // send refresh token in cookie
+        const refreshtoken = generateRefreshToken(res, next, newUser);
+
+        if (!accesstoken && !refreshtoken) {
+          await authModel.deleteOne({ _id: newUser._id });
+          return errResponse(next, "User not found ", 500);
+        }
+
+        // Send the new access token in the response body
+        res.json({ token: accesstoken });
+      }
+    );
+  } catch (error) {
+    console.error(`Error in refreshTokenController : ${error.message}`);
+    next(error); // Pass errors to the global error handler
   }
 };

@@ -5,14 +5,14 @@ import {
   readAllController,
   updateController,
 } from "../controllers/crudController.js";
-import { tokenValidation } from "../middleware/tokenValidation.js";
+import { accessTokenValidation } from "../middleware/accessTokenValidation.js";
 
 const crudRoute = Router();
 
-crudRoute.post("/create", tokenValidation, createController);
-crudRoute.put("/update/:id", tokenValidation, updateController);
-crudRoute.delete("/delete/:id", tokenValidation, deleteController);
+crudRoute.post("/create", accessTokenValidation, createController);
+crudRoute.put("/update/:id", accessTokenValidation, updateController);
+crudRoute.delete("/delete/:id", accessTokenValidation, deleteController);
 //?page=1&limit=2
-crudRoute.get("/read/all", tokenValidation, readAllController); 
+crudRoute.get("/read/all", accessTokenValidation, readAllController); 
 
 export default crudRoute;

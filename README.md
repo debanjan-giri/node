@@ -1,1 +1,1 @@
-### 💎 Repo contian collection of node js project
+### 💎 Repo contain collection of node js project
